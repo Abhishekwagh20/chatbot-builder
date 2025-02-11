@@ -1,12 +1,8 @@
 // src/pages/api/chat.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
+import OpenAI from 'openai';
 
-// Simulated function to retrieve context.
-// In a real integration, you might call your /api/retrieve-context endpoint or use a LanceDB SDK.
 async function getContext(query: string): Promise<string> {
-  // For example, you could use:
-  // const res = await fetch('http://localhost:3000/api/retrieve-context', { ... });
-  // return (await res.json()).context;
   return `Simulated context for query: "${query}"`;
 }
 
@@ -17,18 +13,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const { prompt, llmType } = req.body;
-
   if (!prompt || !llmType) {
     return res.status(400).json({ error: 'Missing prompt or llmType' });
   }
 
-  // Retrieve context using our simulated RAG function
   const context = await getContext(prompt);
-
   let responseText = '';
+
   if (llmType === 'openai') {
-    responseText = `OpenAI response for prompt: "${prompt}" with context: "${context}"`;
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    try {
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: [
+          { role: 'system', content: 'You are a helpful assistant.' },
+          { role: 'user', content: `${prompt}\n\nContext: ${context}` },
+        ],
+      });
+      responseText = completion.choices[0].message.content || 'No response';
+    } catch (error: any) {
+      return res.status(500).json({ error: error.message });
+    }
   } else if (llmType === 'gemini') {
+    // Placeholder for Gemini integration
     responseText = `Gemini response for prompt: "${prompt}" with context: "${context}"`;
   } else {
     responseText = `Default response for prompt: "${prompt}" with context: "${context}"`;
