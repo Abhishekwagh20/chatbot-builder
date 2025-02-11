@@ -56,18 +56,37 @@ export default function BuilderPage() {
     setEdges((eds) => addEdge(connection, eds));
   }, []);
 
+  const handleExport = () => {
+    const template = { nodes, edges };
+    const dataStr =
+      "data:text/json;charset=utf-8," +
+      encodeURIComponent(JSON.stringify(template, null, 2));
+    const downloadAnchorNode = document.createElement("a");
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "template.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+  
+
   useEffect(() => {
-    const fetchTemplates = async () => {
-      const { data, error } = await supabase
-        .from('chat_templates')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (!error && data) {
-        setTemplates(data);
+    const imported = localStorage.getItem('importedTemplate');
+    if (imported) {
+      try {
+        const parsed = JSON.parse(imported);
+        if (parsed.nodes && parsed.edges) {
+          setNodes(parsed.nodes);
+          setEdges(parsed.edges);
+          // Remove the stored template after loading
+          localStorage.removeItem('importedTemplate');
+        }
+      } catch (err) {
+        console.error('Failed to load imported template:', err);
       }
-    };
-    fetchTemplates();
+    }
   }, []);
+  
 
   const handleTemplateSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value;
@@ -88,7 +107,7 @@ export default function BuilderPage() {
 
   return (
     <div style={{ height: '100vh' }}>
-      <div className="p-4 bg-gray-200">
+      <div className="p-4 bg-gray-200 flex items-center space-x-4">
         <label className="mr-2">Load Template:</label>
         <select value={selectedTemplateId} onChange={handleTemplateSelect}>
           <option value="">Select a template</option>
@@ -98,6 +117,12 @@ export default function BuilderPage() {
             </option>
           ))}
         </select>
+        <button
+          onClick={handleExport}
+          className="bg-indigo-500 text-white px-4 py-2 rounded"
+        >
+          Export Template
+        </button>
       </div>
       <ReactFlow
         nodes={nodes}
@@ -113,4 +138,5 @@ export default function BuilderPage() {
       </ReactFlow>
     </div>
   );
+  
 }
