@@ -1,5 +1,4 @@
-// src/pages/builder.tsx
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import ReactFlow, {
   addEdge,
   MiniMap,
@@ -8,10 +7,9 @@ import ReactFlow, {
   Node,
   Edge,
   Connection,
-  EdgeChange,
-  NodeChange,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import { supabase } from '../lib/supabaseClient';
 
 const initialNodes: Node[] = [
   {
@@ -41,15 +39,16 @@ const initialEdges: Edge[] = [
 export default function BuilderPage() {
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
 
-  const onNodesChange = useCallback((changes: NodeChange[]) => {
-    setNodes((nds) => nds.map((node) => {
-      // Process node changes if needed
-      return node;
-    }));
+  const onNodesChange = useCallback((changes: any) => {
+    // Update nodes (if needed)
+    setNodes((nds) => nds.map((node) => node));
   }, []);
 
-  const onEdgesChange = useCallback((changes: EdgeChange[]) => {
+  const onEdgesChange = useCallback((changes: any) => {
+    // Update edges (if needed)
     setEdges((eds) => eds.map((edge) => edge));
   }, []);
 
@@ -57,8 +56,49 @@ export default function BuilderPage() {
     setEdges((eds) => addEdge(connection, eds));
   }, []);
 
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      const { data, error } = await supabase
+        .from('chat_templates')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!error && data) {
+        setTemplates(data);
+      }
+    };
+    fetchTemplates();
+  }, []);
+
+  const handleTemplateSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = e.target.value;
+    setSelectedTemplateId(id);
+    const templateObj = templates.find((temp) => temp.id === id);
+    if (templateObj && templateObj.template) {
+      try {
+        const parsed = JSON.parse(templateObj.template);
+        if (parsed.nodes && parsed.edges) {
+          setNodes(parsed.nodes);
+          setEdges(parsed.edges);
+        }
+      } catch (err) {
+        console.error('Invalid template JSON:', err);
+      }
+    }
+  };
+
   return (
     <div style={{ height: '100vh' }}>
+      <div className="p-4 bg-gray-200">
+        <label className="mr-2">Load Template:</label>
+        <select value={selectedTemplateId} onChange={handleTemplateSelect}>
+          <option value="">Select a template</option>
+          {templates.map((temp) => (
+            <option key={temp.id} value={temp.id}>
+              {temp.id} - {new Date(temp.created_at).toLocaleString()}
+            </option>
+          ))}
+        </select>
+      </div>
       <ReactFlow
         nodes={nodes}
         edges={edges}
