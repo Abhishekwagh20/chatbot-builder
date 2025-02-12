@@ -9,11 +9,14 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.744.0",
+    "@aws-sdk/s3-request-presigner": "^3.744.0",
     "@stripe/stripe-js": "^5.6.0",
     "@supabase/supabase-js": "^2.48.1",
     "axios": "^1.7.9",
     "next": "15.1.6",
     "openai": "^4.83.0",
+    "pdf-parse": "^1.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "reactflow": "^11.11.4",
