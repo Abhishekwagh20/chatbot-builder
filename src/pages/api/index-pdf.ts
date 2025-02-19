@@ -1,6 +1,7 @@
 // src/pages/api/index-pdf.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import * as lancedb from '@lancedb/lancedb';
+import { Schema, Field, Utf8, FixedSizeList, Float32 } from 'apache-arrow';
 
 // Simulated function to generate an embedding from text.
 function generateEmbedding(text: string): number[] {
@@ -18,24 +19,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Missing text data' });
   }
   
-  // Connect to LanceDB; ensure that the directory "data/my_lancedb" exists in your project root.
-  const db = await lancedb.connect('data/my_lancedb');
-  let collection;
+  // Connect to LanceDB
+  const db = await lancedb.connect("data/my_lancedb");
+  let table;
   
   try {
-    // Try to retrieve an existing collection called "pdf_embeddings"
-    collection = await db.collection('pdf_embeddings');
+    table = await db.openTable("pdf_embeddings");
   } catch (err) {
-    // If it doesn't exist, create it.
-    // (Here we assume that the createCollection method accepts an options object with a "vectorSize" property.)
-    collection = await db.createCollection('pdf_embeddings', { vectorSize: 128 });
+    // Corrected schema definition
+    const schema = new Schema([
+      new Field("text", new Utf8()),
+      new Field("embedding", new FixedSizeList(
+        128,  // List size first
+        new Field("item", new Float32())  // Child field second
+      ))
+    ]);
+    table = await db.createTable("pdf_embeddings", [], { schema });
   }
   
   const embedding = generateEmbedding(text);
   const record = { text, embedding };
   
   try {
-    const result = await collection.insert(record);
+    const result = await table.add([record]);
     return res.status(200).json({ message: 'Text indexed', record: result });
   } catch (error: any) {
     return res.status(500).json({ error: error.message });
